@@ -1,0 +1,20 @@
+{
+  "name": "finote",
+  "version": "1.0.0",
+  "description": "FiNote - Ứng dụng Quản lý Tài chính Cá nhân",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "keywords": ["finance", "finote", "budget"],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.3.0"
+  }
+}

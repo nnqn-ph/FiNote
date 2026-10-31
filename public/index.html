@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FiNote - Quản Lý Thu Chi Cá Nhân</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Custom Figma Pixel-Perfect CSS -->
+  <link rel="stylesheet" href="css/style.css?v=4">
+</head>
+<body>
+
+  <!-- ================= 1. AUTH / LOGIN SCREEN (FIGMA IMAGE 1) ================= -->
+  <div id="authScreen" class="auth-wrapper" style="display: none;">
+    <!-- Left Hero Illustration Area -->
+    <div class="auth-left-banner">
+      <div class="auth-banner-illustration">
+        <div class="auth-brand-logo">
+          <span>📊</span> FiNote
+        </div>
+        <p class="auth-brand-tagline">
+          Ứng dụng quản lý tài chính & thu chi thông minh, trực quan và bảo mật.
+        </p>
+      </div>
+    </div>
+
+    <!-- Right Login Form -->
+    <div class="auth-right-container">
+      <div class="auth-card">
+        <h1 class="auth-title">Đăng nhập</h1>
+
+        <div class="form-group-pill">
+          <label class="form-label-pill" for="loginEmailInput">Email</label>
+          <input type="text" id="loginEmailInput" class="form-control-pill" placeholder="Email hoặc số điện thoại" value="user@finote.vn">
+        </div>
+
+        <div class="form-group-pill">
+          <label class="form-label-pill" for="loginPasswordInput">Mật khẩu</label>
+          <input type="password" id="loginPasswordInput" class="form-control-pill" placeholder="Mật khẩu" value="123456">
+        </div>
+
+        <div class="auth-links">
+          <a class="auth-link" id="linkRegister">Đăng ký</a>
+          <a class="auth-link" id="linkForgotPassword">Quên mật khẩu?</a>
+        </div>
+
+        <button type="button" id="btnLogin" class="btn-navy-pill">Đăng nhập</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Modal -->
+  <div id="registerModal" class="modal-overlay">
+    <div class="modal-box-figma">
+      <h2 class="modal-title-center">Đăng ký tài khoản</h2>
+      <div class="form-group-pill">
+        <label class="form-label-pill">Họ và tên</label>
+        <input type="text" id="regName" class="form-control-pill" placeholder="Ví dụ: Nguyễn Văn A">
+      </div>
+      <div class="form-group-pill">
+        <label class="form-label-pill">Email</label>
+        <input type="email" id="regEmail" class="form-control-pill" placeholder="example@email.com">
+      </div>
+      <div class="form-group-pill">
+        <label class="form-label-pill">Số điện thoại</label>
+        <input type="tel" id="regPhone" class="form-control-pill" placeholder="0987xxxxxx">
+      </div>
+      <div class="form-group-pill">
+        <label class="form-label-pill">Mật khẩu</label>
+        <input type="password" id="regPassword" class="form-control-pill" placeholder="Tối thiểu 6 ký tự">
+      </div>
+      <button type="button" id="btnRegisterSubmit" class="btn-navy-pill" style="margin-top: 10px;">Đăng ký ngay</button>
+    </div>
+  </div>
+
+  <!-- Forgot Password Modal -->
+  <div id="forgotModal" class="modal-overlay">
+    <div class="modal-box-figma">
+      <h2 class="modal-title-center">Quên mật khẩu</h2>
+      <div id="forgotStep1">
+        <div class="form-group-pill">
+          <label class="form-label-pill">Nhập Email đăng ký</label>
+          <input type="email" id="forgotEmail" class="form-control-pill" placeholder="user@finote.vn">
+        </div>
+        <button type="button" id="btnSendForgotOtp" class="btn-navy-pill">Gửi mã xác thực OTP</button>
+      </div>
+      <div id="forgotStep2" style="display: none;">
+        <div class="form-group-pill">
+          <label class="form-label-pill">Mã OTP (4 chữ số)</label>
+          <input type="text" id="forgotOtp" class="form-control-pill" placeholder="Nhập mã OTP">
+        </div>
+        <div class="form-group-pill">
+          <label class="form-label-pill">Mật khẩu mới</label>
+          <input type="password" id="forgotNewPassword" class="form-control-pill" placeholder="Nhập mật khẩu mới">
+        </div>
+        <button type="button" id="btnResetPasswordSubmit" class="btn-navy-pill">Đổi mật khẩu</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ================= 2. MAIN APP SHELL (HEADER + SIDEBAR + VIEWS) ================= -->
+  <div id="appScreen" class="app-container">
+
+    <!-- Top Navy Header Bar (Figma Exact Replica) -->
+    <header class="app-header">
+      <div class="header-left">
+        <button id="btnHeaderBack" class="btn-header-back" title="Quay lại">
+          <img src="icons FiNote/arrow back.png" alt="Quay lại" style="width: 18px; height: 18px; object-fit: contain;">
+        </button>
+        <div class="user-badge-dropdown" id="userBadgeDropdown">
+          <div class="avatar-circle-sm" style="overflow: hidden; background: transparent;">
+            <img src="icons FiNote/account.png" alt="User" style="width: 100%; height: 100%; object-fit: cover;">
+          </div>
+          <span class="user-name-text">User</span>
+          <img src="icons FiNote/down-arrow.png" alt="Dropdown" style="width: 10px; height: 10px; object-fit: contain; margin-left: 4px;">
+
+          <!-- Dropdown menu -->
+          <div class="user-dropdown-menu" id="userDropdownMenu">
+            <div class="dropdown-item-custom" id="menuItemProfile">
+              <img src="icons FiNote/account.png" alt="Profile" style="width: 18px; height: 18px; object-fit: contain;"> Hồ sơ cá nhân
+            </div>
+            <div class="dropdown-item-custom" id="menuItemReports">
+              <img src="icons FiNote/growth-graph.png" alt="Reports" style="width: 18px; height: 18px; object-fit: contain;"> Thống kê & Phân tích
+            </div>
+            <div class="dropdown-divider-custom"></div>
+            <div class="dropdown-item-custom" id="menuItemLogout" style="color: #ef4444;">
+              <img src="icons FiNote/logout.png" alt="Logout" style="width: 18px; height: 18px; object-fit: contain;"> Đăng xuất
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-right">
+        <button id="btnHeaderThemeToggle" class="btn-header-theme" title="Chuyển chế độ sáng / tối">
+          🌙
+        </button>
+        <button class="btn-header-bell" title="Thông báo">
+          <img src="icons FiNote/notifacation.png" alt="Thông báo" style="width: 20px; height: 20px; object-fit: contain;">
+          <span class="bell-badge-dot"></span>
+        </button>
+      </div>
+    </header>
+
+    <!-- App Body: Sidebar + Main Content -->
+    <div class="app-body">
+
+      <!-- Left Navy Sidebar -->
+      <aside class="app-sidebar">
+        <div class="sidebar-top">
+          <!-- Home / Dashboard -->
+          <button class="sidebar-nav-btn active" data-view="dashboard" title="Dashboard">
+            <img src="icons FiNote/home.png" alt="Dashboard" style="width: 22px; height: 22px; object-fit: contain;">
+          </button>
+          <!-- Wallet / Transactions -->
+          <button class="sidebar-nav-btn" data-view="transactions" title="Quản lý thu / chi">
+            <img src="icons FiNote/wallet.png" alt="Quản lý thu / chi" style="width: 22px; height: 22px; object-fit: contain;">
+          </button>
+          <!-- Settings / Profile -->
+          <button class="sidebar-nav-btn" data-view="profile" title="Thông tin cá nhân">
+            <img src="icons FiNote/settings.png" alt="Thông tin cá nhân" style="width: 22px; height: 22px; object-fit: contain;">
+          </button>
+        </div>
+
+        <div class="sidebar-bottom">
+          <!-- Logout -->
+          <button class="sidebar-nav-btn" data-view="logout" title="Đăng xuất">
+            <img src="icons FiNote/logout.png" alt="Đăng xuất" style="width: 22px; height: 22px; object-fit: contain;">
+          </button>
+        </div>
+      </aside>
+
+      <!-- Main Screen Views Container -->
+      <main class="app-main">
+
+        <!-- ================= VIEW 1: DASHBOARD (FIGMA IMAGE 2 TOP-LEFT) ================= -->
+        <section id="viewDashboard" style="display: block;">
+          <div class="view-header">
+            <h1 class="view-title">Dashboard</h1>
+            <button class="btn-add-transaction btn-add-transaction-trigger">
+              + Thêm giao dịch
+            </button>
+          </div>
+
+          <!-- 3 Top KPI Cards -->
+          <div class="dashboard-kpi-row">
+            <div class="kpi-card">
+              <div class="kpi-card-title">Tổng số dư</div>
+              <div class="kpi-card-value" id="kpiCurrentBalance">5.000.000đ</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-card-title">Tổng thu tháng này</div>
+              <div class="kpi-card-value" id="kpiMonthIncome">3.000.000đ</div>
+            </div>
+            <div class="kpi-card">
+              <div class="kpi-card-title">Tổng chi tháng này</div>
+              <div class="kpi-card-value" id="kpiMonthExpense">1.000.000đ</div>
+            </div>
+          </div>
+
+          <!-- Dashboard Grid: Chart + Recent Cashflow -->
+          <div class="dashboard-content-grid">
+            <!-- Left: Tổng quan thu - chi -->
+            <div class="dash-card">
+              <div class="dash-card-header">
+                <h3 class="dash-card-title">Tổng quan thu - chi</h3>
+              </div>
+              <div style="height: 280px; position: relative;">
+                <canvas id="dashOverviewChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Right: Dòng tiền gần đây -->
+            <div class="dash-card">
+              <div class="dash-card-header">
+                <h3 class="dash-card-title">Dòng tiền gần đây</h3>
+              </div>
+              <div class="cashflow-list" id="dashboardRecentCashflow">
+                <!-- Dynamically loaded from DB -->
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 2: QUẢN LÝ THU / CHI (FIGMA IMAGE 2 TOP-RIGHT) ================= -->
+        <section id="viewTransactions" style="display: none;">
+          <div class="view-header">
+            <h1 class="view-title">Quản lý thu / chi</h1>
+            <button class="btn-add-transaction btn-add-transaction-trigger">
+              + Thêm giao dịch
+            </button>
+          </div>
+
+          <!-- Filter & Search Toolbar -->
+          <div class="filter-toolbar-row">
+            <!-- Month Selector -->
+            <div class="month-selector-pill">
+              <button class="btn-month-nav" id="btnMonthPrev">◀</button>
+              <span id="currentMonthDisplay">Tháng 10/2026</span>
+              <button class="btn-month-nav" id="btnMonthNext">▶</button>
+            </div>
+
+            <!-- Search input -->
+            <div class="search-input-wrapper">
+              <span class="search-icon-inside">
+                <img src="icons FiNote/search.png" alt="Search" style="width: 16px; height: 16px; object-fit: contain;">
+              </span>
+              <input type="text" id="txSearchInput" class="form-control-pill" placeholder="Tìm kiếm giao dịch...">
+            </div>
+
+            <!-- Sort dropdown: Lọc cao -> thấp / thấp -> cao -->
+            <select id="txSortSelect" class="sort-select-pill">
+              <option value="desc">Lọc: Cao → Thấp ▼</option>
+              <option value="asc">Lọc: Thấp → Cao ▲</option>
+            </select>
+          </div>
+
+          <!-- Main Card: Danh sách giao dịch gom nhóm theo danh mục -->
+          <div class="transactions-master-card">
+            <div class="tx-card-top-bar">
+              <h3 class="tx-card-title" id="txListMonthTitle">Danh sách giao dịch tháng 10</h3>
+              <select id="txTypeFilterSelect" class="type-filter-select">
+                <option value="expense">Khoản chi ▼</option>
+                <option value="income">Khoản thu ▼</option>
+                <option value="all">Tất cả ▼</option>
+              </select>
+            </div>
+
+            <!-- Grouped Category Items Container -->
+            <div id="transactionsGroupContainer">
+              <!-- Dynamically populated -->
+            </div>
+
+            <button class="btn-xem-them" onclick="renderTransactions()">Xem thêm</button>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 3: THÔNG TIN CÁ NHÂN & CÀI ĐẶT (FIGMA IMAGE 2 BOTTOM-RIGHT) ================= -->
+        <section id="viewProfile" style="display: none;">
+          <div class="view-header">
+            <h1 class="view-title">Thông tin cá nhân</h1>
+          </div>
+
+          <div class="profile-three-col-layout">
+            <!-- CỘT 1: HỒ SƠ CÁ NHÂN -->
+            <div class="profile-card">
+              <div class="profile-card-title">
+                <span>Hồ sơ cá nhân</span>
+                <img src="icons FiNote/edit.png" alt="Edit" style="width: 16px; height: 16px; object-fit: contain;">
+              </div>
+              <div class="avatar-large-container">
+                <div class="avatar-circle-lg">
+                  <img src="icons FiNote/account (1).png" alt="Profile" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
+                <button class="btn-update-avatar" id="btnAvatarUpload">Cập nhật ảnh</button>
+              </div>
+
+              <div class="form-group-pill">
+                <label class="form-label-pill">Họ tên</label>
+                <input type="text" id="profileNameInput" class="form-control-pill" value="User">
+              </div>
+              <div class="form-group-pill">
+                <label class="form-label-pill">Email</label>
+                <input type="email" id="profileEmailInput" class="form-control-pill" value="user@finote.vn">
+              </div>
+              <div class="form-group-pill">
+                <label class="form-label-pill">Số điện thoại</label>
+                <input type="tel" id="profilePhoneInput" class="form-control-pill" value="0987 654 321">
+              </div>
+              <button class="btn-navy-pill btn-save-settings" id="btnSaveProfile">Lưu hồ sơ</button>
+            </div>
+
+            <!-- CỘT 2: BẢO MẬT -->
+            <div class="profile-card">
+              <div class="profile-card-title">
+                <span>Bảo mật</span>
+                <img src="icons FiNote/lock.png" alt="Lock" style="width: 18px; height: 18px; object-fit: contain;">
+              </div>
+
+              <div class="form-group-pill">
+                <label class="form-label-pill">Mật khẩu hiện tại</label>
+                <input type="password" id="pwdCurrentInput" class="form-control-pill" placeholder="••••••••">
+              </div>
+              <div class="form-group-pill">
+                <label class="form-label-pill">Mật khẩu mới</label>
+                <input type="password" id="pwdNewInput" class="form-control-pill" placeholder="••••••••">
+              </div>
+              <div class="form-group-pill">
+                <label class="form-label-pill">Xác nhận mật khẩu</label>
+                <input type="password" id="pwdConfirmInput" class="form-control-pill" placeholder="••••••••">
+              </div>
+              <button class="btn-navy-pill btn-save-settings" id="btnUpdatePassword">Cập nhật mật khẩu</button>
+            </div>
+
+            <!-- CỘT 3: THIẾT LẬP TÀI CHÍNH & GIAO DIỆN (ĐỘC LẬP RIÊNG BIỆT) -->
+            <div class="profile-col-stacked">
+              <!-- Card 3: Thiết lập tài chính -->
+              <div class="profile-card">
+                <div class="profile-card-title">
+                  <span>Thiết lập tài chính</span>
+                  <img src="icons FiNote/settings.png" alt="Settings" style="width: 18px; height: 18px; object-fit: contain;">
+                </div>
+
+                <div class="form-group-pill">
+                  <label class="form-label-pill">Hạn mức ngân sách tháng</label>
+                  <input type="number" id="settingsBudgetInput" class="form-control-pill" value="5000000">
+                </div>
+                <div class="form-group-pill">
+                  <label class="form-label-pill">Loại tiền tệ</label>
+                  <select id="settingsCurrencySelect" class="form-control-pill" style="cursor: pointer;">
+                    <option value="VND">VND (Việt Nam đồng)</option>
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                  </select>
+                </div>
+
+                <button class="btn-navy-pill btn-save-settings" id="btnSaveFinancialSettings">Lưu thiết lập</button>
+              </div>
+
+              <!-- Card 4: Giao diện & Chủ đề (Nằm độc lập chuyên biệt) -->
+              <div class="profile-card">
+                <div class="profile-card-title">
+                  <span>Giao diện & Chủ đề</span>
+                  <span style="font-size: 18px;">🎨</span>
+                </div>
+                <p class="profile-card-subtitle" style="margin-top: -10px; margin-bottom: 16px;">Tùy chọn hiển thị sáng / tối</p>
+
+                <div class="theme-options-grid">
+                  <!-- Option 1: Sáng -->
+                  <div class="theme-card-option" id="themeOptionLight">
+                    <div class="theme-preview-mini light">
+                      <div class="theme-preview-header"></div>
+                      <div class="theme-preview-content">
+                        <div class="theme-preview-sidebar"></div>
+                        <div class="theme-preview-cards">
+                          <div class="theme-preview-chip"></div>
+                          <div class="theme-preview-chip" style="background:#cbd5e1;"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="theme-info-box">
+                      <span class="theme-info-title">☀️ Giao diện Sáng (Light)</span>
+                      <span class="theme-info-desc">Nền thanh lịch, chuẩn Figma</span>
+                    </div>
+                    <span class="theme-check-icon">✓</span>
+                  </div>
+
+                  <!-- Option 2: Tối -->
+                  <div class="theme-card-option active" id="themeOptionDark">
+                    <div class="theme-preview-mini dark">
+                      <div class="theme-preview-header"></div>
+                      <div class="theme-preview-content">
+                        <div class="theme-preview-sidebar"></div>
+                        <div class="theme-preview-cards">
+                          <div class="theme-preview-chip"></div>
+                          <div class="theme-preview-chip" style="background:#1e2e4a;"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="theme-info-box">
+                      <span class="theme-info-title">🌙 Giao diện Tối (Midnight Dark)</span>
+                      <span class="theme-info-desc">Nền Deep Slate cao cấp chuẩn demo</span>
+                    </div>
+                    <span class="theme-check-icon">✓</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ================= VIEW 4: BÁO CÁO THỐNG KÊ CHI TIÊU & SAI LỆCH THÁNG ================= -->
+        <section id="viewReports" style="display: none;">
+          <div class="view-header">
+            <h1 class="view-title">Thống kê chi tiêu & Sai lệch tháng</h1>
+            <button class="btn-add-transaction" id="btnExportCsv" style="background: #10b981;">
+              📥 Xuất báo cáo (CSV)
+            </button>
+          </div>
+
+          <!-- AI Anomaly Detection Banner -->
+          <div id="anomalyNoticeBox" class="dash-card" style="display: none; background: #fff1f2; border: 1px solid #fecdd3; margin-bottom: 24px;">
+            <h4 style="color: #e11d48; margin-bottom: 8px; font-weight: 700;">⚠️ Phát hiện thói quen chi tiêu bất thường (AI Anomaly)</h4>
+            <div id="anomalyListContent" style="font-size: 14px; color: #9f1239;"></div>
+          </div>
+
+          <!-- Monthly Bar Chart -->
+          <div class="dash-card" style="margin-bottom: 24px;">
+            <div class="dash-card-header">
+              <h3 class="dash-card-title">Biểu đồ tổng chi tiêu các tháng gần nhất</h3>
+            </div>
+            <div style="height: 280px; position: relative;">
+              <canvas id="varianceReportChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Detailed Variance Table -->
+          <div class="dash-card">
+            <div class="dash-card-header">
+              <h3 class="dash-card-title">Bảng so sánh chi tiêu & Sai lệch so với tháng trước</h3>
+            </div>
+            <table class="tx-table-custom">
+              <thead>
+                <tr style="background: #f8fafc; font-weight: 700; color: #475569;">
+                  <th style="padding: 12px;">Tháng</th>
+                  <th style="padding: 12px;">Tổng thu</th>
+                  <th style="padding: 12px;">Tổng chi</th>
+                  <th style="padding: 12px;">Sai lệch so với tháng trước (Delta)</th>
+                </tr>
+              </thead>
+              <tbody id="varianceTableBody">
+                <!-- Dynamically loaded -->
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+      </main>
+    </div>
+  </div>
+
+
+  <!-- ================= 3. MODAL THÊM / SỬA GIAO DỊCH (FIGMA IMAGE 2 BOTTOM-LEFT) ================= -->
+  <div id="addTransactionModal" class="modal-overlay">
+    <div class="modal-box-figma">
+      <h2 class="modal-title-center" id="txModalTitle">Thêm giao dịch mới</h2>
+
+      <!-- Toggle: Khoản chi (green) vs Khoản thu (red) -->
+      <div class="tx-type-toggle-row">
+        <button type="button" id="btnTypeExpense" class="btn-toggle-type btn-expense active">
+          Khoản chi
+        </button>
+        <button type="button" id="btnTypeIncome" class="btn-toggle-type btn-income">
+          Khoản thu
+        </button>
+      </div>
+
+      <!-- Số tiền -->
+      <div class="form-group-pill">
+        <label class="form-label-pill" id="txModalAmountLabel">Số tiền (VNĐ)</label>
+        <input type="number" step="any" id="txModalAmount" class="form-control-pill" placeholder="Ví dụ: 125000">
+      </div>
+
+      <!-- Ngày -->
+      <div class="form-group-pill">
+        <label class="form-label-pill">Ngày</label>
+        <input type="date" id="txModalDate" class="form-control-pill">
+      </div>
+
+      <!-- Mô tả / Tên khoản chi + AI Suggestion -->
+      <div class="form-group-pill">
+        <label class="form-label-pill">Mô tả giao dịch</label>
+        <input type="text" id="txModalDesc" class="form-control-pill" placeholder="Ví dụ: Ăn trưa, Quần áo, Gửi xe...">
+        <div id="aiSuggestChip" class="ai-suggest-chip" style="display: none;" title="Nhấn để tự động chọn danh mục này">
+          ✨ Gợi ý AI: <strong>Ăn uống</strong>
+        </div>
+      </div>
+
+      <!-- Danh mục -->
+      <div class="form-group-pill">
+        <label class="form-label-pill">Danh mục</label>
+        <div style="position: relative; display: flex; align-items: center;">
+          <span id="selectedCategoryIconPreview" style="position: absolute; left: 14px; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; pointer-events: none; z-index: 2;"></span>
+          <select id="txModalCategory" class="form-control-pill" style="cursor: pointer; padding-left: 44px;">
+            <!-- Dynamically filled with options and icons -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Ghi chú -->
+      <div class="form-group-pill">
+        <label class="form-label-pill">Ghi chú</label>
+        <input type="text" id="txModalNote" class="form-control-pill" placeholder="Ghi chú chi tiết thêm (tùy chọn)">
+      </div>
+
+      <!-- Button: Lưu giao dịch -->
+      <button type="button" id="txModalSubmitBtn" class="btn-navy-pill" style="margin-top: 10px;">
+        Lưu giao dịch
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ================= 4. MODAL XÁC NHẬN XÓA GIAO DỊCH ================= -->
+  <div id="deleteConfirmModal" class="modal-overlay">
+    <div class="confirm-delete-box">
+      <div class="confirm-delete-icon">🗑️</div>
+      <h3 class="confirm-delete-title">Xác nhận xóa?</h3>
+      <p class="confirm-delete-text">Bạn có chắc chắn muốn xóa khoản giao dịch này? Thao tác này không thể hoàn tác.</p>
+      <div class="confirm-btns-row">
+        <button type="button" id="btnCancelDelete" class="btn-cancel-pill">Hủy</button>
+        <button type="button" id="btnConfirmDelete" class="btn-danger-pill">Xác nhận xóa</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toastContainer" class="toast-container-custom"></div>
+
+  <!-- App JavaScript -->
+  <script src="js/app.js?v=3"></script>
+</body>
+</html>
