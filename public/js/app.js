@@ -122,8 +122,12 @@ const API_BASE = (window.location.protocol === 'file:') ? 'http://localhost:3000
 // API request helper with active user header
 async function apiRequest(url, options = {}) {
   const headers = options.headers || {};
-  if (state.currentUser && state.currentUser.id) {
-    headers['x-user-id'] = state.currentUser.id;
+  const activeUserId = (state.currentUser && state.currentUser.id) 
+    ? state.currentUser.id 
+    : sessionStorage.getItem('finote_user_id');
+
+  if (activeUserId) {
+    headers['x-user-id'] = activeUserId;
   }
   options.headers = {
     'Content-Type': 'application/json',
@@ -134,6 +138,11 @@ async function apiRequest(url, options = {}) {
     const res = await fetch(fullUrl, options);
     const data = await res.json();
     if (!res.ok) {
+      if (res.status === 401 && !url.includes('/api/auth/login')) {
+        state.currentUser = null;
+        sessionStorage.removeItem('finote_user_id');
+        showAuthScreen();
+      }
       throw new Error(data.error || 'Có lỗi xảy ra');
     }
     return data;
@@ -212,18 +221,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   setupEventListeners();
 
-  // Check login state
-  try {
-    const data = await apiRequest('/api/auth/me');
-    state.currentUser = data.user;
-    updateUserBadge();
-    showAppScreen();
-    await loadCategories();
-    switchView('dashboard');
-  } catch (e) {
-    // Show login page
-    showAuthScreen();
+  // Kiểm tra phiên đăng nhập đã lưu trong tab trình duyệt
+  const savedUserId = sessionStorage.getItem('finote_user_id');
+  if (savedUserId) {
+    try {
+      const data = await apiRequest('/api/auth/me');
+      state.currentUser = data.user;
+      updateUserBadge();
+      await loadCategories();
+      showAppScreen();
+      switchView('dashboard');
+      return;
+    } catch (e) {
+      sessionStorage.removeItem('finote_user_id');
+    }
   }
+
+  // Mặc định luôn ở màn hình Đăng nhập khi người dùng mới truy cập link web
+  state.currentUser = null;
+  showAuthScreen();
 });
 
 // View switching
@@ -1044,13 +1060,20 @@ function setupEventListeners() {
     const email = document.getElementById('loginEmailInput').value.trim();
     const password = document.getElementById('loginPasswordInput').value;
 
+    if (!email || !password) {
+      showToast('Vui lòng nhập email/SĐT và mật khẩu.', true);
+      return;
+    }
+
     try {
       const data = await apiRequest('/api/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password })
       });
       state.currentUser = data.user;
+      sessionStorage.setItem('finote_user_id', data.user.id);
       updateUserBadge();
+      await loadCategories();
       showAppScreen();
       showToast('Đăng nhập thành công! Chào mừng bạn đến với FiNote.');
       switchView('dashboard');
@@ -1074,15 +1097,22 @@ function setupEventListeners() {
     const phone = document.getElementById('regPhone').value.trim();
     const password = document.getElementById('regPassword').value;
 
+    if (!name || !email || !password) {
+      showToast('Vui lòng điền đầy đủ họ tên, email và mật khẩu.', true);
+      return;
+    }
+
     try {
       const res = await apiRequest('/api/auth/register', {
         method: 'POST',
         body: JSON.stringify({ name, email, phone, password })
       });
       document.getElementById('registerModal').classList.remove('show');
-      showToast('Đăng ký thành công! Đang đăng nhập...');
+      showToast('Đăng ký thành công! Đang chuyển đến ứng dụng...');
       state.currentUser = res.user;
+      sessionStorage.setItem('finote_user_id', res.user.id);
       updateUserBadge();
+      await loadCategories();
       showAppScreen();
       switchView('dashboard');
     } catch (err) {
@@ -1146,6 +1176,8 @@ function changeMonth(delta) {
 
 function handleLogout() {
   state.currentUser = null;
+  sessionStorage.removeItem('finote_user_id');
+  localStorage.removeItem('finote_user_id');
   showAuthScreen();
   showToast('Đã đăng xuất khỏi FiNote.');
 }

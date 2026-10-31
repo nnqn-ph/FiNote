@@ -24,14 +24,26 @@ app.use(express.urlencoded({ extended: true }));
 // Serve static assets
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Simple cookie / session simulation
-// For convenience in local testing, default to user 1 if not explicitly provided
+// Session helper: user must be authenticated via x-user-id header
 function getSessionUserId(req) {
   const authHeader = req.headers['x-user-id'];
   if (authHeader) {
-    return parseInt(authHeader, 10);
+    const parsed = parseInt(authHeader, 10);
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
   }
-  return 1; // Default demo user
+  return null;
+}
+
+// Authentication middleware for protected endpoints
+function requireAuth(req, res, next) {
+  const userId = getSessionUserId(req);
+  if (!userId) {
+    return res.status(401).json({ error: 'Vui lòng đăng nhập để tiếp tục.' });
+  }
+  req.userId = userId;
+  next();
 }
 
 // ================= AUTH ROUTES =================
@@ -99,9 +111,8 @@ app.post('/api/auth/reset-password', (req, res) => {
   return res.json({ message: 'Đổi mật khẩu thành công. Vui lòng đăng nhập lại.' });
 });
 
-app.get('/api/auth/me', (req, res) => {
-  const userId = getSessionUserId(req);
-  const user = dbHelper.getUserById(userId);
+app.get('/api/auth/me', requireAuth, (req, res) => {
+  const user = dbHelper.getUserById(req.userId);
   if (!user) {
     return res.status(404).json({ error: 'Không tìm thấy người dùng' });
   }
@@ -109,8 +120,8 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 // ================= USER & PROFILE ROUTES =================
-app.put('/api/user/profile', (req, res) => {
-  const userId = getSessionUserId(req);
+app.put('/api/user/profile', requireAuth, (req, res) => {
+  const userId = req.userId;
   const { name, email, phone, avatar } = req.body;
   try {
     dbHelper.updateProfile(userId, name, email, phone, avatar);
@@ -121,8 +132,8 @@ app.put('/api/user/profile', (req, res) => {
   }
 });
 
-app.put('/api/user/password', (req, res) => {
-  const userId = getSessionUserId(req);
+app.put('/api/user/password', requireAuth, (req, res) => {
+  const userId = req.userId;
   const { currentPassword, newPassword } = req.body;
   const fullUser = dbHelper.db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
 
@@ -135,8 +146,8 @@ app.put('/api/user/password', (req, res) => {
   return res.json({ message: 'Cập nhật mật khẩu thành công.' });
 });
 
-app.put('/api/user/financial-settings', (req, res) => {
-  const userId = getSessionUserId(req);
+app.put('/api/user/financial-settings', requireAuth, (req, res) => {
+  const userId = req.userId;
   const { budget, currency } = req.body;
   dbHelper.updateFinancialSettings(userId, parseFloat(budget) || 5000000, currency || 'VND');
   const user = dbHelper.getUserById(userId);
@@ -150,8 +161,8 @@ app.get('/api/categories', (req, res) => {
 });
 
 // ================= TRANSACTIONS =================
-app.get('/api/transactions', (req, res) => {
-  const userId = getSessionUserId(req);
+app.get('/api/transactions', requireAuth, (req, res) => {
+  const userId = req.userId;
   const { month, category, type, search, sort } = req.query;
 
   const transactions = dbHelper.getTransactions(userId, {
@@ -185,8 +196,8 @@ app.get('/api/transactions', (req, res) => {
   });
 });
 
-app.get('/api/transactions/:id', (req, res) => {
-  const userId = getSessionUserId(req);
+app.get('/api/transactions/:id', requireAuth, (req, res) => {
+  const userId = req.userId;
   const tx = dbHelper.getTransactionById(req.params.id, userId);
   if (!tx) {
     return res.status(404).json({ error: 'Không tìm thấy giao dịch.' });
@@ -194,8 +205,8 @@ app.get('/api/transactions/:id', (req, res) => {
   return res.json({ transaction: tx });
 });
 
-app.post('/api/transactions', (req, res) => {
-  const userId = getSessionUserId(req);
+app.post('/api/transactions', requireAuth, (req, res) => {
+  const userId = req.userId;
   const { type, amount, date, category_name, description, note } = req.body;
 
   if (!type || !amount || !date || !category_name || !description) {
@@ -219,8 +230,8 @@ app.post('/api/transactions', (req, res) => {
   }
 });
 
-app.put('/api/transactions/:id', (req, res) => {
-  const userId = getSessionUserId(req);
+app.put('/api/transactions/:id', requireAuth, (req, res) => {
+  const userId = req.userId;
   const { type, amount, date, category_name, description, note } = req.body;
   const id = req.params.id;
 
@@ -242,8 +253,8 @@ app.put('/api/transactions/:id', (req, res) => {
   }
 });
 
-app.delete('/api/transactions/:id', (req, res) => {
-  const userId = getSessionUserId(req);
+app.delete('/api/transactions/:id', requireAuth, (req, res) => {
+  const userId = req.userId;
   const id = req.params.id;
   try {
     dbHelper.deleteTransaction(id, userId);
@@ -254,8 +265,8 @@ app.delete('/api/transactions/:id', (req, res) => {
 });
 
 // ================= DASHBOARD SUMMARY =================
-app.get('/api/dashboard/summary', (req, res) => {
-  const userId = getSessionUserId(req);
+app.get('/api/dashboard/summary', requireAuth, (req, res) => {
+  const userId = req.userId;
   const month = req.query.month || '2026-10';
 
   const summary = dbHelper.getMonthlySummary(userId, month);
@@ -280,8 +291,8 @@ app.get('/api/dashboard/summary', (req, res) => {
 });
 
 // ================= REPORTS & MONTHLY VARIANCE =================
-app.get('/api/reports/variance', (req, res) => {
-  const userId = getSessionUserId(req);
+app.get('/api/reports/variance', requireAuth, (req, res) => {
+  const userId = req.userId;
   const stats = dbHelper.getMonthlyVariance(userId);
   return res.json({ stats });
 });
@@ -293,15 +304,15 @@ app.get('/api/ai/classify', (req, res) => {
   return res.json({ result });
 });
 
-app.get('/api/ai/anomalies', (req, res) => {
-  const userId = getSessionUserId(req);
+app.get('/api/ai/anomalies', requireAuth, (req, res) => {
+  const userId = req.userId;
   const anomalies = dbHelper.detectAnomalies(userId);
   return res.json({ anomalies });
 });
 
 // ================= EXPORT CSV =================
-app.get('/api/export/csv', (req, res) => {
-  const userId = getSessionUserId(req);
+app.get('/api/export/csv', requireAuth, (req, res) => {
+  const userId = req.userId;
   const transactions = dbHelper.getTransactions(userId);
 
   let csv = 'ID,Loại,Danh mục,Mô tả,Số tiền (VNĐ),Ngày,Ghi chú\n';
