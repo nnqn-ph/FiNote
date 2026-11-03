@@ -154,10 +154,95 @@ app.put('/api/user/financial-settings', requireAuth, (req, res) => {
   return res.json({ message: 'Đã lưu thiết lập tài chính.', user });
 });
 
-// ================= CATEGORIES =================
+// ================= CATEGORIES CRUD =================
 app.get('/api/categories', (req, res) => {
   const categories = dbHelper.getCategories();
   res.json({ categories });
+});
+
+app.post('/api/categories', requireAuth, (req, res) => {
+  const { name, type, icon, color } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Vui lòng nhập tên danh mục.' });
+  }
+
+  const trimmedName = name.trim();
+  const existing = dbHelper.getCategoryByName(trimmedName);
+  if (existing) {
+    return res.status(400).json({ error: 'Tên danh mục này đã tồn tại.' });
+  }
+
+  const validTypes = ['expense', 'income'];
+  const catType = validTypes.includes(type) ? type : 'expense';
+  const catIcon = icon || 'cart';
+  const catColor = color || '#3b82f6';
+
+  try {
+    const result = dbHelper.createCategory(trimmedName, catType, catIcon, catColor);
+    const newCat = dbHelper.getCategoryById(result.lastInsertRowid);
+    return res.status(201).json({ message: 'Thêm danh mục mới thành công.', category: newCat });
+  } catch (err) {
+    return res.status(500).json({ error: 'Lỗi tạo danh mục: ' + err.message });
+  }
+});
+
+app.put('/api/categories/:id', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'ID danh mục không hợp lệ.' });
+  }
+
+  const cat = dbHelper.getCategoryById(id);
+  if (!cat) {
+    return res.status(404).json({ error: 'Không tìm thấy danh mục.' });
+  }
+
+  const { name, type, icon, color } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Tên danh mục không được để trống.' });
+  }
+
+  const trimmedName = name.trim();
+  const existing = dbHelper.getCategoryByName(trimmedName);
+  if (existing && existing.id !== id) {
+    return res.status(400).json({ error: 'Tên danh mục này đã được sử dụng.' });
+  }
+
+  const validTypes = ['expense', 'income'];
+  const catType = validTypes.includes(type) ? type : cat.type;
+  const catIcon = icon || cat.icon;
+  const catColor = color || cat.color;
+
+  try {
+    dbHelper.updateCategory(id, trimmedName, catType, catIcon, catColor);
+    const updated = dbHelper.getCategoryById(id);
+    return res.json({ message: 'Cập nhật danh mục thành công.', category: updated });
+  } catch (err) {
+    return res.status(500).json({ error: 'Lỗi cập nhật danh mục: ' + err.message });
+  }
+});
+
+app.delete('/api/categories/:id', requireAuth, (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (isNaN(id)) {
+    return res.status(400).json({ error: 'ID danh mục không hợp lệ.' });
+  }
+
+  const cat = dbHelper.getCategoryById(id);
+  if (!cat) {
+    return res.status(404).json({ error: 'Không tìm thấy danh mục.' });
+  }
+
+  if (cat.name === 'Khác') {
+    return res.status(400).json({ error: 'Không thể xóa danh mục mặc định "Khác".' });
+  }
+
+  try {
+    dbHelper.deleteCategory(id);
+    return res.json({ message: `Đã xóa danh mục "${cat.name}". Các giao dịch liên quan đã được chuyển sang danh mục "Khác".` });
+  } catch (err) {
+    return res.status(500).json({ error: 'Lỗi xóa danh mục: ' + err.message });
+  }
 });
 
 // ================= TRANSACTIONS =================

@@ -47,19 +47,3 @@ Dự án website quản lý thu chi cá nhân **FiNote** được hiện thực 
    - Nút xuất dữ liệu ra file Excel/CSV.
 
 ---
-
-## 🚀 Hướng Dẫn Chạy Website
-
-Server hiện đang được khởi chạy tại:
-👉 **`http://localhost:3000`**
-
-### Khởi động lại server thủ công (nếu cần):
-```bash
-cd "C:\Users\Admin\.gemini\antigravity\scratch\finote"
-node server.js
-```
-
-### Tài khoản trải nghiệm mặc định:
-- **Email**: `user@finote.vn`
-- **Mật khẩu**: `123456`
-*(Hoặc bạn có thể bấm **Đăng ký** để tạo tài khoản mới ngay trên giao diện).*

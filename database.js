@@ -169,8 +169,40 @@ module.exports = {
     return db.prepare('UPDATE users SET monthly_budget = ?, currency = ? WHERE id = ?').run(budget, currency, id);
   },
 
-  // Categories
-  getCategories: () => db.prepare('SELECT * FROM categories ORDER BY id ASC').all(),
+  // Categories CRUD
+  getCategories: () => {
+    const categories = db.prepare('SELECT * FROM categories ORDER BY id ASC').all();
+    return categories.map(cat => {
+      const usage = db.prepare('SELECT COUNT(*) as count FROM transactions WHERE category_name = ?').get(cat.name);
+      return { ...cat, usage_count: usage ? usage.count : 0 };
+    });
+  },
+  getCategoryById: (id) => db.prepare('SELECT * FROM categories WHERE id = ?').get(id),
+  getCategoryByName: (name) => db.prepare('SELECT * FROM categories WHERE LOWER(name) = LOWER(?)').get(name),
+  createCategory: (name, type, icon, color) => {
+    return db.prepare('INSERT INTO categories (name, type, icon, color) VALUES (?, ?, ?, ?)').run(name, type, icon, color);
+  },
+  updateCategory: (id, name, type, icon, color) => {
+    const old = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
+    const res = db.prepare('UPDATE categories SET name = ?, type = ?, icon = ?, color = ? WHERE id = ?').run(name, type, icon, color, id);
+    if (old && old.name !== name) {
+      db.prepare('UPDATE transactions SET category_name = ? WHERE category_name = ?').run(name, old.name);
+    }
+    return res;
+  },
+  deleteCategory: (id) => {
+    const old = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
+    if (old) {
+      // Reassign transactions using this category to 'Khác'
+      let khacCat = db.prepare("SELECT * FROM categories WHERE name = 'Khác'").get();
+      if (!khacCat) {
+        db.prepare("INSERT INTO categories (name, type, icon, color) VALUES ('Khác', 'expense', 'cart', '#64748b')").run();
+        khacCat = db.prepare("SELECT * FROM categories WHERE name = 'Khác'").get();
+      }
+      db.prepare("UPDATE transactions SET category_name = 'Khác', category_id = ? WHERE category_name = ?").run(khacCat.id, old.name);
+    }
+    return db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+  },
 
   // Transactions CRUD
   getTransactions: (userId, { month, category, type, search, sort } = {}) => {
