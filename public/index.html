@@ -235,9 +235,14 @@
         <section id="viewTransactions" style="display: none;">
           <div class="view-header">
             <h1 class="view-title">Quản lý thu / chi</h1>
-            <button class="btn-add-transaction btn-add-transaction-trigger">
-              + Thêm giao dịch
-            </button>
+            <div style="display: flex; gap: 10px; align-items: center;">
+              <button type="button" id="btnOpenCategoryModal" class="btn-manage-categories" title="Quản lý danh mục">
+                🏷️ Quản lý danh mục
+              </button>
+              <button class="btn-add-transaction btn-add-transaction-trigger">
+                + Thêm giao dịch
+              </button>
+            </div>
           </div>
 
           <!-- Filter & Search Toolbar -->
@@ -507,7 +512,12 @@
 
       <!-- Danh mục -->
       <div class="form-group-pill">
-        <label class="form-label-pill">Danh mục</label>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label class="form-label-pill" style="margin-bottom: 0;">Danh mục</label>
+          <button type="button" id="btnManageCatFromTxModal" style="background: none; border: none; color: #3b49b6; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: underline;">
+            ⚙️ Quản lý danh mục
+          </button>
+        </div>
         <div style="position: relative; display: flex; align-items: center;">
           <span id="selectedCategoryIconPreview" style="position: absolute; left: 14px; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; pointer-events: none; z-index: 2;"></span>
           <select id="txModalCategory" class="form-control-pill" style="cursor: pointer; padding-left: 44px;">
@@ -543,10 +553,105 @@
     </div>
   </div>
 
+  <!-- ================= 5. MODAL QUẢN LÝ DANH MỤC (THÊM / SỬA / XÓA) ================= -->
+  <div id="categoryManageModal" class="modal-overlay">
+    <div class="modal-box-cat-manage">
+      <div class="cat-manage-header">
+        <div>
+          <h2 style="font-size: 19px; font-weight: 700; margin: 0 0 4px 0; color: inherit;">🏷️ Quản lý danh mục</h2>
+          <p style="font-size: 13px; color: #64748b; margin: 0;">Thêm mới, sửa đổi hoặc xóa các danh mục thu / chi</p>
+        </div>
+        <button type="button" id="btnCloseCatModal" class="btn-action-icon" style="font-size: 20px; line-height: 1; padding: 4px 8px;" title="Đóng">✕</button>
+      </div>
+
+      <div class="cat-manage-body">
+        <!-- Action Row: Tabs (All / Expense / Income) + "+ Thêm danh mục" Button -->
+        <div class="cat-tabs-row">
+          <div class="cat-tabs-group">
+            <button type="button" class="cat-tab-btn active" data-cat-filter="all">Tất cả</button>
+            <button type="button" class="cat-tab-btn" data-cat-filter="expense">Khoản chi</button>
+            <button type="button" class="cat-tab-btn" data-cat-filter="income">Khoản thu</button>
+          </div>
+          <button type="button" id="btnToggleAddCatForm" class="btn-open-cat-form">
+            + Thêm danh mục
+          </button>
+        </div>
+
+        <!-- Add / Edit Category Form (Initially hidden, revealed on click) -->
+        <div id="catFormContainer" class="cat-form-box" style="display: none;">
+          <div class="cat-form-title">
+            <span id="catFormTitleText">Thêm danh mục mới</span>
+            <button type="button" id="btnCancelCatForm" style="background: none; border: none; font-size: 13px; color: #64748b; cursor: pointer; text-decoration: underline;">Đóng</button>
+          </div>
+          <input type="hidden" id="catFormEditId" value="">
+
+          <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 12px;">
+            <div>
+              <label class="form-label-pill">Tên danh mục <span style="color: red;">*</span></label>
+              <input type="text" id="catFormName" class="form-control-pill" placeholder="Ví dụ: Cà phê, Học tập, v.v.">
+            </div>
+            <div>
+              <label class="form-label-pill">Loại giao dịch</label>
+              <select id="catFormType" class="form-control-pill" style="cursor: pointer;">
+                <option value="expense">Khoản chi</option>
+                <option value="income">Khoản thu</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Icon selection -->
+          <label class="form-label-pill" style="margin-bottom: 4px;">Chọn biểu tượng</label>
+          <div class="cat-icon-grid" id="catIconPicker">
+            <!-- Dynamically populated icons -->
+          </div>
+
+          <!-- Color selection -->
+          <label class="form-label-pill" style="margin-bottom: 4px;">Chọn màu sắc</label>
+          <div class="cat-color-grid" id="catColorPicker">
+            <!-- Dynamically populated colors -->
+          </div>
+
+          <!-- Preview & Action buttons -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid #e2e8f0;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+              <span style="font-size: 13px; color: #64748b;">Xem trước:</span>
+              <div id="catFormPreviewBadge" style="display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 20px; font-weight: 700; font-size: 13px;">
+                <span id="catPreviewIcon">🛒</span>
+                <span id="catPreviewName">Tên danh mục</span>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" id="btnResetCatForm" class="btn-cancel-pill" style="padding: 8px 16px; font-size: 13px;">Hủy</button>
+              <button type="button" id="btnSubmitCatForm" class="btn-navy-pill" style="padding: 8px 20px; font-size: 13px; width: auto;">Lưu danh mục</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Categories List -->
+        <div id="catListContainer">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Xác nhận xóa danh mục -->
+  <div id="deleteCatConfirmModal" class="modal-overlay">
+    <div class="confirm-delete-box">
+      <div class="confirm-delete-icon">⚠️</div>
+      <h3 class="confirm-delete-title">Xóa danh mục?</h3>
+      <p class="confirm-delete-text" id="deleteCatConfirmText">Bạn có chắc chắn muốn xóa danh mục này? Tất cả giao dịch thuộc danh mục này sẽ tự động được chuyển sang danh mục "Khác".</p>
+      <div class="confirm-btns-row">
+        <button type="button" id="btnCancelDeleteCat" class="btn-cancel-pill">Hủy</button>
+        <button type="button" id="btnConfirmDeleteCat" class="btn-danger-pill">Xác nhận xóa</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast Container -->
   <div id="toastContainer" class="toast-container-custom"></div>
 
   <!-- App JavaScript -->
-  <script src="js/app.js?v=4"></script>
+  <script src="js/app.js?v=5"></script>
 </body>
 </html>

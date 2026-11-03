@@ -8,6 +8,10 @@ const state = {
   currentSort: 'desc', // 'desc' (Cao -> Thấp) | 'asc' (Thấp -> Cao)
   searchQuery: '',
   categories: [],
+  catFilter: 'all', // 'all' | 'expense' | 'income'
+  selectedCatIcon: 'cart',
+  selectedCatColor: '#3b82f6',
+  deleteCatTargetId: null,
   dashboardChart: null,
   reportsChart: null,
   deleteTargetId: null,
@@ -75,6 +79,16 @@ function updateModalCurrencyLabel() {
   }
 }
 
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function formatDateDisplay(dateStr) {
   if (!dateStr) return '';
   const parts = dateStr.split('-');
@@ -84,7 +98,74 @@ function formatDateDisplay(dateStr) {
   return dateStr;
 }
 
+const ICON_IMG_MAP = {
+  'cutlery': { img: 'icons FiNote/cutlery.png', emoji: '🍽️' },
+  'vehicles': { img: 'icons FiNote/vehicles.png', emoji: '🚗' },
+  'car': { img: 'icons FiNote/vehicles.png', emoji: '🚗' },
+  'cart': { img: 'icons FiNote/cart.png', emoji: '🛒' },
+  'wage': { img: 'icons FiNote/wage.png', emoji: '💰' },
+  'wallet': { img: 'icons FiNote/wallet.png', emoji: '💰' },
+  'building': { img: 'icons FiNote/building.png', emoji: '🏠' },
+  'home': { img: 'icons FiNote/building.png', emoji: '🏠' },
+  'growth-graph': { img: 'icons FiNote/growth-graph.png', emoji: '📈' },
+  'chart': { img: 'icons FiNote/growth-graph.png', emoji: '📈' },
+  'gift': { img: 'icons FiNote/wage.png', emoji: '🎁' },
+  'film': { emoji: '🎮' },
+  'receipt': { emoji: '📄' },
+  'tag': { emoji: '🏷️' }
+};
+
+const COLOR_MAP = {
+  '#f97316': 'orange',
+  '#eab308': 'yellow',
+  '#3b82f6': 'blue',
+  '#8b5cf6': 'purple',
+  '#10b981': 'green',
+  '#ec4899': 'pink',
+  '#64748b': 'slate',
+  '#06b6d4': 'blue',
+  '#94a3b8': 'slate',
+  '#ef4444': 'pink'
+};
+
 function getCategoryMeta(catName) {
+  // Check if categories are loaded dynamically in state
+  if (state && state.categories && state.categories.length > 0) {
+    const found = state.categories.find(c => c.name.toLowerCase() === (catName || '').toLowerCase());
+    if (found) {
+      let iconHtml = '';
+      let emoji = '🏷️';
+      if (ICON_IMG_MAP[found.icon]) {
+        if (ICON_IMG_MAP[found.icon].img) {
+          iconHtml = `<img src="${ICON_IMG_MAP[found.icon].img}" style="width: 20px; height: 20px; object-fit: contain;">`;
+        } else {
+          iconHtml = `<span style="font-size: 18px; line-height: 1;">${ICON_IMG_MAP[found.icon].emoji}</span>`;
+        }
+        emoji = ICON_IMG_MAP[found.icon].emoji;
+      } else if (found.icon && (found.icon.startsWith('http') || found.icon.includes('/') || found.icon.endsWith('.png'))) {
+        iconHtml = `<img src="${found.icon}" style="width: 20px; height: 20px; object-fit: contain;">`;
+      } else if (found.icon) {
+        emoji = found.icon;
+        iconHtml = `<span style="font-size: 18px; line-height: 1;">${found.icon}</span>`;
+      } else {
+        iconHtml = '<img src="icons FiNote/cart.png" style="width: 20px; height: 20px; object-fit: contain;">';
+      }
+
+      const colorClass = COLOR_MAP[found.color] || 'blue';
+      const avatarStyle = (!COLOR_MAP[found.color] && found.color) ? `background-color: ${found.color}25; color: ${found.color};` : '';
+
+      return {
+        icon: iconHtml,
+        emoji,
+        colorClass,
+        avatarStyle,
+        colorHex: found.color,
+        type: found.type
+      };
+    }
+  }
+
+  // Fallback defaults
   const map = {
     'Ăn uống': { icon: '<img src="icons FiNote/cutlery.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '🍽️', colorClass: 'orange', type: 'expense' },
     'Phương tiện': { icon: '<img src="icons FiNote/vehicles.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '🚗', colorClass: 'yellow', type: 'expense' },
@@ -220,6 +301,7 @@ function updateChartTheme(chart, isDark) {
 document.addEventListener('DOMContentLoaded', async () => {
   initTheme();
   setupEventListeners();
+  initCatPickers();
 
   // Kiểm tra phiên đăng nhập đã lưu trong tab trình duyệt
   const savedUserId = sessionStorage.getItem('finote_user_id');
@@ -489,16 +571,16 @@ async function renderTransactions() {
 
         rowsHtml += `
           <tr data-id="${item.id}">
-            <td style="width: 200px;">
+            <td class="col-cat">
               <div class="col-icon-name">
-                <div class="cat-avatar ${meta.colorClass}" style="width:34px; height:34px; font-size:16px;">
+                <div class="cat-avatar ${meta.colorClass}" style="${meta.avatarStyle || ''} width:34px; height:34px; font-size:16px;">
                   ${meta.icon}
                 </div>
-                <span>${item.category_name}</span>
+                <span title="${escapeHtml(item.category_name)}">${escapeHtml(item.category_name)}</span>
               </div>
             </td>
             <td class="col-date">${formatDateDisplay(item.date)}</td>
-            <td class="col-desc">${item.description}</td>
+            <td class="col-desc" title="${escapeHtml(item.description)}">${escapeHtml(item.description)}</td>
             <td class="col-amount" style="${amountColor}">${sign}${formatMoney(item.amount)}</td>
             <td class="col-actions">
               <button class="btn-action-icon btn-edit" onclick="handleEditTransaction(${item.id})" title="Sửa">
@@ -514,10 +596,17 @@ async function renderTransactions() {
 
       block.innerHTML = `
         <div class="category-group-header">
-          <span>${meta.icon} ${group.categoryName}</span>
+          <span>${meta.icon} ${escapeHtml(group.categoryName)}</span>
           <span>Tổng: ${formatMoney(group.totalAmount)}</span>
         </div>
         <table class="tx-table-custom">
+          <colgroup>
+            <col style="width: 220px;">
+            <col style="width: 130px;">
+            <col>
+            <col style="width: 170px;">
+            <col style="width: 90px;">
+          </colgroup>
           <tbody>
             ${rowsHtml}
           </tbody>
@@ -910,6 +999,76 @@ function setupEventListeners() {
   });
   document.getElementById('btnConfirmDelete').addEventListener('click', handleConfirmDelete);
 
+  // Category Management Modal Listeners
+  const btnOpenCatModal = document.getElementById('btnOpenCategoryModal');
+  if (btnOpenCatModal) {
+    btnOpenCatModal.addEventListener('click', openCategoryManageModal);
+  }
+
+  const btnManageCatFromTxModal = document.getElementById('btnManageCatFromTxModal');
+  if (btnManageCatFromTxModal) {
+    btnManageCatFromTxModal.addEventListener('click', () => {
+      document.getElementById('addTransactionModal').classList.remove('show');
+      openCategoryManageModal();
+    });
+  }
+
+  const btnCloseCatModal = document.getElementById('btnCloseCatModal');
+  if (btnCloseCatModal) {
+    btnCloseCatModal.addEventListener('click', closeCategoryManageModal);
+  }
+
+  const btnToggleAddCatForm = document.getElementById('btnToggleAddCatForm');
+  if (btnToggleAddCatForm) {
+    btnToggleAddCatForm.addEventListener('click', openAddCategoryForm);
+  }
+
+  const btnCancelCatForm = document.getElementById('btnCancelCatForm');
+  if (btnCancelCatForm) {
+    btnCancelCatForm.addEventListener('click', closeCatForm);
+  }
+
+  const btnResetCatForm = document.getElementById('btnResetCatForm');
+  if (btnResetCatForm) {
+    btnResetCatForm.addEventListener('click', closeCatForm);
+  }
+
+  const btnSubmitCatForm = document.getElementById('btnSubmitCatForm');
+  if (btnSubmitCatForm) {
+    btnSubmitCatForm.addEventListener('click', handleSaveCategory);
+  }
+
+  document.querySelectorAll('.cat-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.cat-tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      state.catFilter = btn.dataset.catFilter;
+      renderCategoryList();
+    });
+  });
+
+  const catFormNameInput = document.getElementById('catFormName');
+  if (catFormNameInput) {
+    catFormNameInput.addEventListener('input', updateCatFormPreview);
+  }
+
+  const catFormTypeSelect = document.getElementById('catFormType');
+  if (catFormTypeSelect) {
+    catFormTypeSelect.addEventListener('change', updateCatFormPreview);
+  }
+
+  const btnCancelDeleteCat = document.getElementById('btnCancelDeleteCat');
+  if (btnCancelDeleteCat) {
+    btnCancelDeleteCat.addEventListener('click', () => {
+      document.getElementById('deleteCatConfirmModal').classList.remove('show');
+    });
+  }
+
+  const btnConfirmDeleteCat = document.getElementById('btnConfirmDeleteCat');
+  if (btnConfirmDeleteCat) {
+    btnConfirmDeleteCat.addEventListener('click', handleConfirmDeleteCategory);
+  }
+
   // Search and Sort in Transactions Page
   document.getElementById('txSearchInput').addEventListener('input', (e) => {
     state.searchQuery = e.target.value;
@@ -1180,4 +1339,319 @@ function handleLogout() {
   localStorage.removeItem('finote_user_id');
   showAuthScreen();
   showToast('Đã đăng xuất khỏi FiNote.');
+}
+
+// ================= QUẢN LÝ DANH MỤC (THÊM, XÓA, SỬA) =================
+const PRESET_ICONS = [
+  { id: 'cart', label: 'Mua sắm', html: '<img src="icons FiNote/cart.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '🛒' },
+  { id: 'cutlery', label: 'Ăn uống', html: '<img src="icons FiNote/cutlery.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '🍽️' },
+  { id: 'vehicles', label: 'Phương tiện', html: '<img src="icons FiNote/vehicles.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '🚗' },
+  { id: 'wage', label: 'Lương / Thu nhập', html: '<img src="icons FiNote/wage.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '💰' },
+  { id: 'building', label: 'Nhà ở', html: '<img src="icons FiNote/building.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '🏠' },
+  { id: 'growth-graph', label: 'Đầu tư', html: '<img src="icons FiNote/growth-graph.png" style="width: 20px; height: 20px; object-fit: contain;">', emoji: '📈' },
+  { id: '☕', label: 'Cà phê', html: '<span>☕</span>', emoji: '☕' },
+  { id: '🎁', label: 'Thưởng / Quà', html: '<span>🎁</span>', emoji: '🎁' },
+  { id: '🎮', label: 'Giải trí', html: '<span>🎮</span>', emoji: '🎮' },
+  { id: '📄', label: 'Hóa đơn', html: '<span>📄</span>', emoji: '📄' },
+  { id: '🏥', label: 'Sức khỏe', html: '<span>🏥</span>', emoji: '🏥' },
+  { id: '📚', label: 'Giáo dục', html: '<span>📚</span>', emoji: '📚' },
+  { id: '✈️', label: 'Du lịch', html: '<span>✈️</span>', emoji: '✈️' },
+  { id: '🛍️', label: 'Thời trang', html: '<span>🛍️</span>', emoji: '🛍️' },
+  { id: '🐾', label: 'Thú cưng', html: '<span>🐾</span>', emoji: '🐾' },
+  { id: '🏋️', label: 'Thể thao', html: '<span>🏋️</span>', emoji: '🏋️' },
+  { id: '💡', label: 'Tiện ích', html: '<span>💡</span>', emoji: '💡' },
+  { id: '💼', label: 'Công việc', html: '<span>💼</span>', emoji: '💼' }
+];
+
+const PRESET_COLORS = [
+  '#3b82f6', // Xanh dương
+  '#f97316', // Cam
+  '#eab308', // Vàng
+  '#8b5cf6', // Tím
+  '#10b981', // Xanh lá
+  '#ec4899', // Hồng
+  '#06b6d4', // Cyan
+  '#64748b', // Xám đá
+  '#ef4444'  // Đỏ
+];
+
+function initCatPickers() {
+  const iconPicker = document.getElementById('catIconPicker');
+  const colorPicker = document.getElementById('catColorPicker');
+
+  if (iconPicker) {
+    iconPicker.innerHTML = '';
+    PRESET_ICONS.forEach(item => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = `cat-icon-choice ${state.selectedCatIcon === item.id ? 'active' : ''}`;
+      btn.dataset.iconId = item.id;
+      btn.title = item.label;
+      btn.innerHTML = item.html;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.cat-icon-choice').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        state.selectedCatIcon = item.id;
+        updateCatFormPreview();
+      });
+      iconPicker.appendChild(btn);
+    });
+  }
+
+  if (colorPicker) {
+    colorPicker.innerHTML = '';
+    PRESET_COLORS.forEach(color => {
+      const dot = document.createElement('button');
+      dot.type = 'button';
+      dot.className = `cat-color-choice ${state.selectedCatColor === color ? 'active' : ''}`;
+      dot.dataset.color = color;
+      dot.style.backgroundColor = color;
+      dot.title = color;
+      dot.addEventListener('click', () => {
+        document.querySelectorAll('.cat-color-choice').forEach(d => d.classList.remove('active'));
+        dot.classList.add('active');
+        state.selectedCatColor = color;
+        updateCatFormPreview();
+      });
+      colorPicker.appendChild(dot);
+    });
+  }
+}
+
+function updateCatFormPreview() {
+  const nameInput = document.getElementById('catFormName');
+  const previewBadge = document.getElementById('catFormPreviewBadge');
+  const previewIcon = document.getElementById('catPreviewIcon');
+  const previewName = document.getElementById('catPreviewName');
+  if (!previewBadge || !nameInput) return;
+
+  const nameVal = nameInput.value.trim() || 'Tên danh mục';
+  previewName.textContent = nameVal;
+
+  const iconItem = PRESET_ICONS.find(i => i.id === state.selectedCatIcon);
+  if (iconItem) {
+    previewIcon.innerHTML = iconItem.html;
+  } else {
+    previewIcon.innerHTML = '🏷️';
+  }
+
+  const color = state.selectedCatColor || '#3b82f6';
+  previewBadge.style.backgroundColor = `${color}25`;
+  previewBadge.style.color = color;
+  previewBadge.style.border = `1px solid ${color}60`;
+}
+
+function openCategoryManageModal() {
+  const modal = document.getElementById('categoryManageModal');
+  if (!modal) return;
+  modal.classList.add('show');
+  closeCatForm();
+  renderCategoryList();
+}
+
+function closeCategoryManageModal() {
+  const modal = document.getElementById('categoryManageModal');
+  if (modal) modal.classList.remove('show');
+}
+
+function openAddCategoryForm() {
+  const formBox = document.getElementById('catFormContainer');
+  if (!formBox) return;
+
+  document.getElementById('catFormTitleText').textContent = 'Thêm danh mục mới';
+  document.getElementById('catFormEditId').value = '';
+  document.getElementById('catFormName').value = '';
+  document.getElementById('catFormType').value = 'expense';
+
+  state.selectedCatIcon = 'cart';
+  state.selectedCatColor = '#3b82f6';
+
+  // Update active states
+  document.querySelectorAll('.cat-icon-choice').forEach(b => {
+    b.classList.toggle('active', b.dataset.iconId === 'cart');
+  });
+  document.querySelectorAll('.cat-color-choice').forEach(d => {
+    d.classList.toggle('active', d.dataset.color === '#3b82f6');
+  });
+
+  updateCatFormPreview();
+  formBox.style.display = 'block';
+  formBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function closeCatForm() {
+  const formBox = document.getElementById('catFormContainer');
+  if (formBox) formBox.style.display = 'none';
+}
+
+function handleEditCategory(catId) {
+  const cat = state.categories.find(c => c.id === catId);
+  if (!cat) return;
+
+  const formBox = document.getElementById('catFormContainer');
+  if (!formBox) return;
+
+  document.getElementById('catFormTitleText').textContent = `Chỉnh sửa danh mục "${cat.name}"`;
+  document.getElementById('catFormEditId').value = cat.id;
+  document.getElementById('catFormName').value = cat.name;
+  document.getElementById('catFormType').value = cat.type;
+
+  state.selectedCatIcon = cat.icon || 'cart';
+  state.selectedCatColor = cat.color || '#3b82f6';
+
+  document.querySelectorAll('.cat-icon-choice').forEach(b => {
+    b.classList.toggle('active', b.dataset.iconId === state.selectedCatIcon);
+  });
+  document.querySelectorAll('.cat-color-choice').forEach(d => {
+    d.classList.toggle('active', d.dataset.color === state.selectedCatColor);
+  });
+
+  updateCatFormPreview();
+  formBox.style.display = 'block';
+  formBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+async function handleSaveCategory() {
+  const nameInput = document.getElementById('catFormName');
+  const name = nameInput.value.trim();
+  const type = document.getElementById('catFormType').value;
+  const editId = document.getElementById('catFormEditId').value;
+  const icon = state.selectedCatIcon || 'cart';
+  const color = state.selectedCatColor || '#3b82f6';
+
+  if (!name) {
+    showToast('Vui lòng nhập tên danh mục.', true);
+    nameInput.focus();
+    return;
+  }
+
+  try {
+    if (editId) {
+      // Update
+      const res = await apiRequest(`/api/categories/${editId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ name, type, icon, color })
+      });
+      showToast(res.message || 'Đã cập nhật danh mục thành công.');
+    } else {
+      // Create
+      const res = await apiRequest('/api/categories', {
+        method: 'POST',
+        body: JSON.stringify({ name, type, icon, color })
+      });
+      showToast(res.message || 'Đã thêm danh mục mới thành công.');
+    }
+
+    closeCatForm();
+    await loadCategories();
+    renderCategoryList();
+
+    if (state.activeView === 'transactions') {
+      renderTransactions();
+    } else if (state.activeView === 'dashboard') {
+      renderDashboard();
+    }
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+function handleOpenDeleteCatModal(catId) {
+  const cat = state.categories.find(c => c.id === catId);
+  if (!cat) return;
+
+  if (cat.name === 'Khác') {
+    showToast('Không thể xóa danh mục mặc định "Khác".', true);
+    return;
+  }
+
+  state.deleteCatTargetId = catId;
+  const confirmText = document.getElementById('deleteCatConfirmText');
+  const usageCount = cat.usage_count || 0;
+  if (confirmText) {
+    confirmText.textContent = `Bạn có chắc chắn muốn xóa danh mục "${cat.name}"? ${usageCount > 0 ? `(${usageCount} giao dịch thuộc danh mục này sẽ tự động được chuyển sang danh mục "Khác")` : ''}`;
+  }
+
+  const modal = document.getElementById('deleteCatConfirmModal');
+  if (modal) modal.classList.add('show');
+}
+
+async function handleConfirmDeleteCategory() {
+  if (!state.deleteCatTargetId) return;
+
+  try {
+    const res = await apiRequest(`/api/categories/${state.deleteCatTargetId}`, {
+      method: 'DELETE'
+    });
+    showToast(res.message || 'Đã xóa danh mục thành công.');
+
+    document.getElementById('deleteCatConfirmModal').classList.remove('show');
+    state.deleteCatTargetId = null;
+
+    await loadCategories();
+    renderCategoryList();
+
+    if (state.activeView === 'transactions') {
+      renderTransactions();
+    } else if (state.activeView === 'dashboard') {
+      renderDashboard();
+    }
+  } catch (err) {
+    showToast(err.message, true);
+  }
+}
+
+function renderCategoryList() {
+  const container = document.getElementById('catListContainer');
+  if (!container) return;
+
+  const filter = state.catFilter || 'all';
+  const list = state.categories.filter(cat => {
+    if (filter === 'all') return true;
+    return cat.type === filter;
+  });
+
+  if (list.length === 0) {
+    container.innerHTML = '<p class="text-muted" style="text-align: center; padding: 24px 0;">Chưa có danh mục nào trong nhóm này.</p>';
+    return;
+  }
+
+  let html = '<div style="display: flex; flex-direction: column; gap: 6px;">';
+  list.forEach(cat => {
+    const meta = getCategoryMeta(cat.name);
+    const isExpense = cat.type === 'expense';
+    const typeLabel = isExpense ? 'Khoản chi' : 'Khoản thu';
+    const typeClass = isExpense ? 'expense' : 'income';
+    const usage = cat.usage_count || 0;
+    const isKhac = cat.name === 'Khác';
+
+    html += `
+      <div class="cat-list-item-row" data-cat-id="${cat.id}">
+        <div class="cat-item-left">
+          <div class="cat-avatar ${meta.colorClass}" style="${meta.avatarStyle || ''} width: 36px; height: 36px; font-size: 16px;">
+            ${meta.icon}
+          </div>
+          <div>
+            <div style="font-weight: 700; color: inherit; font-size: 14px;">
+              ${escapeHtml(cat.name)}
+              <span class="cat-badge-type ${typeClass}">${typeLabel}</span>
+            </div>
+            <div class="cat-usage-text">${usage} giao dịch sử dụng</div>
+          </div>
+        </div>
+        <div class="cat-item-actions">
+          <button type="button" class="btn-action-icon" onclick="handleEditCategory(${cat.id})" title="Chỉnh sửa danh mục">
+            <img src="icons FiNote/edit.png" alt="Sửa" style="width: 15px; height: 15px; object-fit: contain;">
+          </button>
+          ${isKhac ? '' : `
+            <button type="button" class="btn-action-icon btn-delete" onclick="handleOpenDeleteCatModal(${cat.id})" title="Xóa danh mục">
+              <img src="icons FiNote/delete.png" alt="Xóa" style="width: 15px; height: 15px; object-fit: contain;">
+            </button>
+          `}
+        </div>
+      </div>
+    `;
+  });
+  html += '</div>';
+  container.innerHTML = html;
 }
